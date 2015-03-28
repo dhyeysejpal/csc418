@@ -263,7 +263,7 @@ Colour Raytracer::shadeRay( Ray3D& ray)
 		Vector3D D = ray.dir;
 		Vector3D reflectionDir;
 		
-
+		//glossy reflections handled. comment out loop for only specular reflection and debug
 		for (double i = -1.0; i < 1.0; i = i + 0.1)
 		{
 			reflectionDir = -2*(D.dot(N))*N + D;

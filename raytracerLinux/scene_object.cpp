@@ -104,3 +104,118 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 	return false;
 }
 
+bool UnitCylinder::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
+		const Matrix4x4& modelToWorld ) {
+	
+	// Cylinder of radius 1 which is intersected with two planes at z = 0.5, -0.5
+	Ray3D ro;
+	ro.origin = worldToModel*ray.origin;
+    ro.dir = worldToModel*ray.dir;
+	Point3D sphereOrigin(0,0,0);
+
+
+	// Define solutions to quadratic equation
+	double lambdaP_1;
+	double lambdaP_2;
+	double lambda_1;
+	double lambda_2;
+
+	double A = ro.dir[0]*ro.dir[0] + ro.dir[1]*ro.dir[1];
+	double B = (ro.origin[0]*ro.dir[0] + ro.origin[1] * ro.dir[1]);
+	double C = ro.origin[0]*ro.origin[0] + ro.origin[1]*ro.origin[1] - 1;
+
+	
+	//Find discriminant
+	double D = B*B-A*C;
+	Point3D intersectionPoint;
+	Vector3D normal_1;
+	Vector3D normal_2;
+	Vector3D normal;
+
+	//If the discriminant is negative there is no intersection
+	//Else, get the lambda for the side of the cylinder
+	if (D<0)
+		return false;
+
+	// calculate solutions, and take the minimum (closest) non-negative 
+	// number
+	lambda_1 = -B/A + sqrt(D) / A;
+	lambda_2 = -B/A - sqrt(D) / A;
+	if (lambda_1 < 0 && lambda_2 < 0)
+		return false;
+	else if (lambda_1 > 0 && lambda_2 < 0)
+		lambda_2 = lambda_1;
+	else
+		lambdaP_2 = lambda_2;
+		
+	
+	//See if ray intersetions either of the caps 
+	//and take the minimum position value (may intersect both caps)
+	lambda_1 = (-0.5-ro.origin[2])/ro.dir[2];
+	lambda_2 = (0.5-ro.origin[2])/ro.dir[2];
+	if (lambda_1 < lambda_2){
+		lambdaP_1 = lambda_1;
+		Point3D normal_temp(0,0,-1);
+		normal_1 = normal_temp - sphereOrigin;
+		normal_1.normalize();
+	}
+	else{
+		lambdaP_1 = lambda_2;
+		Point3D normal_temp(0,0,1);
+		normal_1 = normal_temp - sphereOrigin;
+		normal_1.normalize();
+	}
+
+	
+	intersectionPoint = ro.origin + lambdaP_1 * ro.dir;
+	if (lambdaP_1* lambdaP_1 < 0.001){
+		return false;
+	}
+	//Use the first lambda to check if it intersects with the cap, top or bottom
+	if (intersectionPoint[0]*intersectionPoint[0] + intersectionPoint[1] * intersectionPoint[1] <= 1)
+	{
+		if (!ray.intersection.none > ray.intersection.t_value){
+			return false;
+		}
+		ray.intersection.point = intersectionPoint;
+		ray.intersection.normal = normal_1;
+		ray.intersection.t_value = lambdaP_1;
+		ray.intersection.none = false;
+		return true;
+	}
+
+
+	 //if not intersected with the caps, use the second lamdba to check 
+	 //if intersects with the side
+	intersectionPoint = ro.origin + lambdaP_2 * ro.dir;
+	if (lambdaP_2 * lambdaP_2 < 0.001)
+		return false;
+	
+	normal_2[0] = intersectionPoint[0];
+	normal_2[1] = intersectionPoint[1];
+	normal_2[2] = 0;
+	normal_2.normalize();
+
+
+
+	if (intersectionPoint[2] < 0.5 && intersectionPoint[2] > -0.5)
+	{
+		if (!ray.intersection.none > ray.intersection.t_value)
+			return false;
+		
+		ray.intersection.point = modelToWorld * intersectionPoint;
+		Point3D normalll;
+		normalll[0] = intersectionPoint[0];
+		normalll[1] = intersectionPoint[1];
+		normalll[2] = 0;
+		ray.intersection.normal = modelToWorld * (normalll - sphereOrigin);
+		ray.intersection.t_value = lambdaP_2;
+		ray.intersection.none = false;
+		return true;
+	}
+	else
+		return false;
+
+}
+
+

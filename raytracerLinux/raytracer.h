@@ -123,6 +123,9 @@ private:
 	// After intersection, calculate the colour of the ray by shading it
 	// with all light sources in the scene.
 	void computeShading( Ray3D& ray );
+
+	//Helper for computeShading
+	Colour helpShade(Ray3D& ray, LightListNode* curLight, int n, float k);
 	
 	// Width and height of the viewport.
 	int _scrWidth;

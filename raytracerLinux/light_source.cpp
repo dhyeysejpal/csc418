@@ -45,6 +45,7 @@ void PointLight::shade( Ray3D& ray ) {
 
 	//Phong
 	ray.col = ambient + diffuse + specular;
+	
 
 	ray.col.clamp();
 }

@@ -1,8 +1,8 @@
 /***********************************************************
-     Starter code for Assignment 3
+	 Starter code for Assignment 3
 
-     This code was originally written by Jack Wang for
-		    CSC418, SPRING 2005
+	 This code was originally written by Jack Wang for
+			CSC418, SPRING 2005
 
 		Implementations of functions in raytracer.h, 
 		and the main function which specifies the 
@@ -88,7 +88,7 @@ void Raytracer::rotate( SceneDagNode* node, char axis, double angle ) {
 			break;
 		}
 		if (i == 0) {
-		    node->trans = node->trans*rotation; 	
+			node->trans = node->trans*rotation; 	
 			angle = -angle;
 		} 
 		else {
@@ -180,15 +180,43 @@ void Raytracer::traverseScene( SceneDagNode* node, Ray3D& ray ) {
 	_modelToWorld = _modelToWorld*node->invtrans;
 }
 
-void Raytracer::computeShading( Ray3D& ray ) {
-	LightListNode* curLight = _lightSource;
-	for (;;) {
-		if (curLight == NULL) break;
-		// Each lightSource provides its own shading function.
 
+void Raytracer::computeShading( Ray3D& ray ) 
+{
+	LightListNode* curLight = _lightSource;
+	for (;;) 
+	{
+		if (curLight == NULL) break;
+		
+		// Each lightSource provides its own shading function.
 		// Implement shadows here if needed.
 
-		curLight->light->shade(ray);
+		Vector3D shadowDir;
+		Colour col(0.0, 0.0, 0.0); 
+		for (float i = -1 ; i < 1.0;i = i + 0.10)
+		{
+			shadowDir = curLight->light->get_position() - ray.intersection.point;
+			shadowDir[0] += i;
+			shadowDir[1] += i;
+			shadowDir[2] += i;
+			shadowDir.normalize();
+			Point3D shadowOrigin = ray.intersection.point + 0.01*shadowDir;
+			Ray3D shadowRay(shadowOrigin , shadowDir);
+			traverseScene(_root, shadowRay);
+			//Compute non-shadow colour
+			curLight->light->shade(ray);
+			//If ray intersects another object it falls in a shadow
+			if (shadowRay.intersection.none)
+				col = col + (0.05 * ray.col);
+			else
+			{
+				col[0] += 0.0;
+				col[1] += 0.0;
+				col[2] += 0.0;
+			}
+				
+		}
+		ray.col = col;
 		curLight = curLight->next;
 	}
 }
@@ -214,20 +242,89 @@ void Raytracer::flushPixelBuffer( char *file_name ) {
 	delete _bbuffer;
 }
 
-Colour Raytracer::shadeRay( Ray3D& ray ) {
-	Colour col(0.0, 0.0, 0.0); 
+Colour Raytracer::shadeRay( Ray3D& ray) 
+{
+	Colour col(0.0, 0.0, 0.0);
+
 	traverseScene(_root, ray); 
 	
 	// Don't bother shading if the ray didn't hit 
 	// anything.
-	if (!ray.intersection.none) {
+	if (!ray.intersection.none) 
+	{
 		computeShading(ray); 
-		col = ray.col;  
+		col = ray.col;
+
+		// You'll want to call shadeRay recursively (with a different ray, 
+		// of course) here to implement reflection/refraction effects.  
+		float dampFactor = 0.0;
+
+		Vector3D N = ray.intersection.normal;
+		Vector3D D = ray.dir;
+		Vector3D reflectionDir;
+		
+
+		// for (double i = 0.0; i < 0.5; i = i + 0.1)
+		// {
+			reflectionDir = -2*(D.dot(N))*N + D;
+		// 	reflectionDir[0] += i;
+		// 	reflectionDir[1] += i;
+		// 	reflectionDir[2] += i;
+		// 	reflectionDir.normalize();
+			
+			Point3D reflectionOrigin = ray.intersection.point + 0.01 * (reflectionDir);
+			Ray3D reflectionRay = Ray3D(reflectionOrigin, reflectionDir);
+			// calculate shade of reflected ray
+			shadeRay(reflectionRay);
+			// limit effective distance of reflections
+			if (!(reflectionRay.intersection.t_value > 10.0 || reflectionRay.intersection.t_value <= 0.0)) 
+			{
+				dampFactor = fabs(1.0/reflectionRay.intersection.t_value);
+				// contraint dampFactor to 0-0.9
+				dampFactor = fmax(0, fmin(dampFactor,0.9));
+				// Set colour to include reflection
+				col = (ray.col + dampFactor * reflectionRay.col);
+			}
+		//}
+
+		
+
+		// if (ray.intersection.mat->transparency > 0.0)
+		// {
+  //           Vector3D inDir = ray.dir;
+  //           Vector3D normal = ray.intersection.normal;
+
+  //           double cosIn = inDir.dot(normal);
+  //           double sinIn = sqrt(1 - cosIn*cosIn);
+  //           double n1, n2;
+  //           double ratio, sinOut, cosOut;
+  //           if (cosIn < 0){// Ray pointing into the surface
+  //                   // We assume here that the rays will only go between
+  //                   // air and objects
+  //                   n2 = ray.intersection.mat->lightSpeed;
+  //                   n1 = 1;
+
+  //           }else{
+  //                   // Ray pointing out
+  //                   n1 = ray.intersection.mat->lightSpeed;
+  //                   n2 = 1;
+  //           }
+  //           ratio = n1 / n2;
+  //           double sinT2 = ratio * ratio * (1.0 - cosIn * cosIn);
+  //           if (sinT2 <= 1.0){
+  //                   Vector3D refrDir = ratio * inDir - (ratio + sqrt(1.0 - sinT2)) * normal;
+  //                   Ray3D refraction(ray.intersection.point, refrDir);
+  //                   Colour refrCol = shadeRay(refraction);
+  //                   ray.col = ray.col + (ray.intersection.mat->transparency) * refrCol;
+  //           }//else we have total internal reflection
+
+  //       }
+		
+		//col = ray.col;
+
+		col.clamp();
+	
 	}
-
-	// You'll want to call shadeRay recursively (with a different ray, 
-	// of course) here to implement reflection/refraction effects.  
-
 	return col; 
 }	
 
@@ -309,10 +406,10 @@ int main(int argc, char* argv[])
 	// Defines a material for shading.
 	Material gold( Colour(0.3, 0.3, 0.3), Colour(0.75164, 0.60648, 0.22648), 
 			Colour(0.628281, 0.555802, 0.366065), 
-			51.2 );
+			51.2, 0.5);
 	Material jade( Colour(0, 0, 0), Colour(0.54, 0.89, 0.63), 
 			Colour(0.316228, 0.316228, 0.316228), 
-			12.8 );
+			12.8, 0.0);
 
 	// Defines a point light source.
 	raytracer.addLightSource( new PointLight(Point3D(0, 0, 5), 
@@ -321,10 +418,13 @@ int main(int argc, char* argv[])
 	// Add a unit square into the scene with material mat.
 	SceneDagNode* sphere = raytracer.addObject( new UnitSphere(), &gold );
 	SceneDagNode* plane = raytracer.addObject( new UnitSquare(), &jade );
-	
+	//SceneDagNode* cylinder = raytracer.addObject( new UnitCylinder(), &gold );
+
 	// Apply some transformations to the unit square.
 	double factor1[3] = { 1.0, 2.0, 1.0 };
 	double factor2[3] = { 6.0, 6.0, 6.0 };
+	double factor3[3] = { 1.5, 1.5, 1.5 };
+
 	raytracer.translate(sphere, Vector3D(0, 0, -5));	
 	raytracer.rotate(sphere, 'x', -45); 
 	raytracer.rotate(sphere, 'z', 45); 
@@ -333,6 +433,10 @@ int main(int argc, char* argv[])
 	raytracer.translate(plane, Vector3D(0, 0, -7));	
 	raytracer.rotate(plane, 'z', 45); 
 	raytracer.scale(plane, Point3D(0, 0, 0), factor2);
+
+	// raytracer.translate(cylinder, Vector3D(-4, 0, -5));
+	// raytracer.scale(cylinder, Point3D(0, 0, 0), factor3);
+
 
 	// Render the scene, feel free to make the image smaller for
 	// testing purposes.	

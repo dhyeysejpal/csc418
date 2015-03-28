@@ -264,15 +264,15 @@ Colour Raytracer::shadeRay( Ray3D& ray)
 		Vector3D reflectionDir;
 		
 
-		// for (double i = 0.0; i < 0.5; i = i + 0.1)
-		// {
+		for (double i = -1.0; i < 1.0; i = i + 0.1)
+		{
 			reflectionDir = -2*(D.dot(N))*N + D;
-		// 	reflectionDir[0] += i;
-		// 	reflectionDir[1] += i;
-		// 	reflectionDir[2] += i;
-		// 	reflectionDir.normalize();
+			reflectionDir[0] += i;
+			reflectionDir[1] += i;
+			reflectionDir[2] += i;
+			reflectionDir.normalize();
 			
-			Point3D reflectionOrigin = ray.intersection.point + 0.01 * (reflectionDir);
+			Point3D reflectionOrigin = ray.intersection.point + 0.01 * reflectionDir;
 			Ray3D reflectionRay = Ray3D(reflectionOrigin, reflectionDir);
 			// calculate shade of reflected ray
 			shadeRay(reflectionRay);
@@ -283,11 +283,12 @@ Colour Raytracer::shadeRay( Ray3D& ray)
 				// contraint dampFactor to 0-0.9
 				dampFactor = fmax(0, fmin(dampFactor,0.9));
 				// Set colour to include reflection
-				col = (ray.col + dampFactor * reflectionRay.col);
+				col = 0.05 * (ray.col + dampFactor * reflectionRay.col);
 			}
-		//}
+		}
 
 		
+		//refraction does not quite work
 
 		// if (ray.intersection.mat->transparency > 0.0)
 		// {
@@ -317,11 +318,11 @@ Colour Raytracer::shadeRay( Ray3D& ray)
   //                   Colour refrCol = shadeRay(refraction);
   //                   ray.col = ray.col + (ray.intersection.mat->transparency) * refrCol;
   //           }//else we have total internal reflection
+				//col = ray.col;
 
   //       }
 		
-		//col = ray.col;
-
+		
 		col.clamp();
 	
 	}
